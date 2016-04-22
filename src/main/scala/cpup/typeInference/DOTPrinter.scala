@@ -3,17 +3,6 @@ package cpup.typeInference
 import java.util.regex.Pattern
 
 class DOTPrinter(g: Graph) {
-	private var unknownNames = Stream.from(1).flatMap { n =>
-		('A' to 'Z').map { c =>
-			c.toString * n
-		}
-	}
-	private var unlabeledNames = Stream.from(1).flatMap { n =>
-		('A' to 'Z').map { c =>
-			c.toString * n
-		}
-	}
-
 	val out = new StringBuilder
 
 	for(pl <- g.places) {
@@ -29,9 +18,7 @@ class DOTPrinter(g: Graph) {
 				s"label: $label"
 
 			case _ =>
-				val label = s"unlabeled: ${unlabeledNames.head}"
-				unlabeledNames = unlabeledNames.tail
-				label
+				s"unlabeled: ${pl.name}"
 		}
 		out ++= "\""
 		out ++= pl.uuid.toString
@@ -56,10 +43,8 @@ class DOTPrinter(g: Graph) {
 			case i: g.Type.Identifier =>
 				s"ident: ${i.name}"
 
-			case _: g.Type.Unknown =>
-				val name = unknownNames.head
-				unknownNames = unknownNames.tail
-				s"unknown: $name"
+			case u: g.Type.Unknown =>
+				s"unknown: ${u.name}"
 		})
 		out ++= "\"];\n"
 		typ match {

@@ -14,6 +14,7 @@ object Main {
 		val m = graph.unknown.label("m")
 		val a = graph.unknown.label("a")
 		val b = graph.unknown.label("b")
+		val bind = fn(m(a))(fn(fn(a)(m(b)))(m(b))).label("bind")
 		val bindArg1 = m(a).label("bindArg1")
 		val bindArg2 = fn(a)(m(b)).label("bindArg2")
 		val bindRes = m(b).label("bindRes")
@@ -23,7 +24,7 @@ object Main {
 
 		// putStrLn :: String -> IO ()
 		val putStrLnArg = string.label("putStrLnArg")
-		val putStrLnRes = int //io(unit).label("putStrLnRes")
+		val putStrLnRes = io(unit).label("putStrLnRes")
 		val putStrLn = fn(putStrLnArg)(putStrLnRes)
 
 		// main = getLine >>= putStrLn
