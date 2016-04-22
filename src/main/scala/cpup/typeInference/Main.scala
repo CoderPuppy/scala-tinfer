@@ -2,7 +2,19 @@ package cpup.typeInference
 
 object Main {
 	def main(args: Array[String]) {
+		println("digraph {\n")
+
 		val graph = new Graph
+
+		var step = 1
+		def printGraph {
+			System.gc()
+			println("subgraph cluster_step" + step + " {\n")
+			println("label = \"Step " + step + "\";\n")
+			println(new DOTPrinter(graph, s"step$step-").out.mkString)
+			println("}\n")
+			step += 1
+		}
 
 		val string = graph.typ("String").label("string")
 		val io = graph.typ("IO").label("io")
@@ -30,13 +42,17 @@ object Main {
 		// main = getLine >>= putStrLn
 		val mainRes = graph.unknown.label("mainRes")
 
-		bindArg1 ++ getLine
-		bindArg2 ++ putStrLn
-		mainRes ++ bindRes
+		printGraph
 
-		println("digraph {\n")
-		System.gc()
-		println(new DOTPrinter(graph).out.mkString)
+		bindArg1 ++ getLine
+		printGraph
+
+		bindArg2 ++ putStrLn
+		printGraph
+
+		mainRes ++ bindRes
+		printGraph
+
 		println("}")
 	}
 }

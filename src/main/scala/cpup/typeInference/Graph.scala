@@ -7,7 +7,7 @@ import scala.collection.mutable
 class Graph {
 	protected val _places = mutable.Set.empty[Place]
 	def places: Set[Place] = _places.toSet
-	protected val _typs = new mutable.WeakHashMap[Type, UUID]()
+	protected val _typs = new mutable.WeakHashMap[Type, Type]()
 	def typs: Set[Type] = _typs.keySet.toSet
 
 	def unknown = new Place(new Type.Unknown)
@@ -15,8 +15,8 @@ class Graph {
 	def typ(name: String) = new Place(new Type.Identifier(name))
 
 	sealed trait Type {
-		if(!_typs.contains(this)) _typs(this) = UUID.randomUUID
-		def uuid = _typs(this)
+		val uuid = UUID.randomUUID()
+		if(!_typs.contains(this)) _typs(this) = this
 
 		protected[typeInference] val _places = mutable.Set.empty[Place]
 		def places = _places.toSet
@@ -74,6 +74,7 @@ class Graph {
 	}
 
 	class Place(protected[typeInference] var _typ: Type) {
+		_typ = _typs(_typ)
 		_places += this
 		_typ._places += this
 		def typ = _typ
@@ -87,12 +88,17 @@ class Graph {
 				case _: Type.Unknown => oldTyp
 				case otyp => oldTyp.merge(otyp)
 			}
+			_typ = _typs(_typ)
 
 			_typ._places ++= other.typ.places
 			_typ._places ++= oldTyp.places
 
 			for(pl <- _typ._places)
 				pl._typ = _typ
+
+			_typs.remove(oldTyp)
+			_typs.remove(other.typ)
+			_typs(_typ) = _typ
 
 			this
 		}

@@ -1,8 +1,6 @@
 package cpup.typeInference
 
-import java.util.regex.Pattern
-
-class DOTPrinter(g: Graph) {
+class DOTPrinter(val g: Graph, val prefix: String) {
 	val out = new StringBuilder
 
 	for(pl <- g.places) {
@@ -21,19 +19,23 @@ class DOTPrinter(g: Graph) {
 				s"unlabeled: ${pl.name}"
 		}
 		out ++= "\""
+		out ++= prefix
 		out ++= pl.uuid.toString
 		out ++= "\" [label=\""
 		out ++= label.replace("\\", "\\\\").replace("\"", "\\\"")
 		out ++= "\"]\n"
 		out ++= "\""
+		out ++= prefix
 		out ++= pl.uuid.toString
 		out ++= "\" -> \""
+		out ++= prefix
 		out ++= pl.typ.uuid.toString
 		out ++= "\"\n"
 	}
 
 	def print(typ: g.Type) {
 		out ++= "\""
+		out ++= prefix
 		out ++= typ.uuid.toString
 		out ++= "\" [label=\""
 		out ++= (typ match {
@@ -50,18 +52,24 @@ class DOTPrinter(g: Graph) {
 		typ match {
 			case cons: g.Type.Construct =>
 				out ++= "\""
+				out ++= prefix
 				out ++= cons.uuid.toString
 				out ++= "\" -> \""
+				out ++= prefix
 				out ++= cons.fn.uuid.toString
 				out ++= "\" [label=\"fn\"];\n"
 
 				out ++= "\""
+				out ++= prefix
 				out ++= cons.uuid.toString
 				out ++= "\" -> \""
+				out ++= prefix
 				out ++= cons.arg.uuid.toString
 				out ++= "\" [label=\"arg\"];\n"
 
 			case _ =>
 		}
+
+//		for(pl <- typ.places) println(typ, pl)
 	}
 }
