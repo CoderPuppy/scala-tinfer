@@ -4,53 +4,50 @@ object Main {
 	def main(args: Array[String]) {
 		println("digraph {\n")
 
-		val graph = new Graph
+		val g = new Graph
 
 		var step = 1
 		def printGraph {
 			System.gc()
 			println("subgraph cluster_step" + step + " {\n")
 			println("label = \"Step " + step + "\";\n")
-			println(new DOTPrinter(graph, s"step$step-").out.mkString)
+			println(new DOTPrinter(g, s"step$step-").out.mkString)
 			println("}\n")
 			step += 1
 		}
 
-		val string = graph.typ("String").label("string")
-		val io = graph.typ("IO").label("io")
-		val unit = graph.typ("()").label("unit")
-		val fn = graph.typ("Function").label("fn")
-		val int = graph.typ("Integer").label("int")
+		val fn = g.typ("Function").label("fn")
+		val io = g.typ("IO").label("io")
+		val str = g.typ("String").label("str")
+		val unit = g.typ("()").label("unit")
 
-		// (>>=) :: m a -> (a -> m b) -> m b
-		val m = graph.unknown.label("m")
-		val a = graph.unknown.label("a")
-		val b = graph.unknown.label("b")
-		val bind = fn(m(a))(fn(fn(a)(m(b)))(m(b))).label("bind")
-		val bindArg1 = m(a).label("bindArg1")
-		val bindArg2 = fn(a)(m(b)).label("bindArg2")
-		val bindRes = m(b).label("bindRes")
+		// bind :: m a -> (a -> m b) -> m b
+		val bind = g.scope { () =>
+			val m = g.unknown.label("m")
+			val a = g.unknown.label("a")
+			val b = g.unknown.label("b")
+
+			g.undefined.use.force(fn(m(a))(fn(fn(a)(m(b)))(m(b))).label("bind"))
+		}
+
+		// seq :: m a -> m b -> m b
+		val seq = g.fn { a => g.fn { b => bind(a)(g.fn { _ => b }) } }.label("seq")
 
 		// getLine :: IO String
-		val getLine = io(string).label("getLineRes")
+		val getLine = g.scope { () =>
+			g.undefined.use.force(io(str))
+		}
 
 		// putStrLn :: String -> IO ()
-		val putStrLnArg = string.label("putStrLnArg")
-		val putStrLnRes = io(unit).label("putStrLnRes")
-		val putStrLn = fn(putStrLnArg)(putStrLnRes)
+		val putStrLn = g.scope { () =>
+			g.undefined.use.force(fn(str)(io(unit)))
+		}
 
-		// main = getLine >>= putStrLn
-		val mainRes = graph.unknown.label("mainRes")
+		// main = bind getLine putStrLn
+		val main = seq(bind(getLine)(putStrLn))(getLine)
 
-		printGraph
+		main.use.typ.label("main")
 
-		bindArg1 ++ getLine
-		printGraph
-
-		bindArg2 ++ putStrLn
-		printGraph
-
-		mainRes ++ bindRes
 		printGraph
 
 		println("}")

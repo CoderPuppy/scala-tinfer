@@ -3,34 +3,27 @@ package cpup.typeInference
 class DOTPrinter(val g: Graph, val prefix: String) {
 	val out = new StringBuilder
 
-	for(pl <- g.places) {
-		print(pl)
-	}
+	for(lbl <- g.labels)
+		print(lbl)
 
 	for(typ <- g.typs)
 		print(typ)
 
-	def print(pl: g.Place) {
-		val label = pl.label match {
-			case Some(label) =>
-				s"label: $label"
+	def print(lbl: g.Label): Unit = {
+		out ++= "\""
+		out ++= prefix
+		out ++= lbl.uuid.toString
+		out ++= "\" [label=\"label: "
+		out ++= lbl.label.replace("\\", "\\\\").replace("\"", "\\\"")
+		out ++= "\"];\n"
 
-			case _ =>
-				s"unlabeled: ${pl.name}"
-		}
 		out ++= "\""
 		out ++= prefix
-		out ++= pl.uuid.toString
-		out ++= "\" [label=\""
-		out ++= label.replace("\\", "\\\\").replace("\"", "\\\"")
-		out ++= "\"]\n"
-		out ++= "\""
-		out ++= prefix
-		out ++= pl.uuid.toString
+		out ++= lbl.uuid.toString
 		out ++= "\" -> \""
 		out ++= prefix
-		out ++= pl.typ.uuid.toString
-		out ++= "\"\n"
+		out ++= lbl.place.typ.uuid.toString
+		out ++= "\";\n"
 	}
 
 	def print(typ: g.Type) {
@@ -56,7 +49,7 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 				out ++= cons.uuid.toString
 				out ++= "\" -> \""
 				out ++= prefix
-				out ++= cons.fn.uuid.toString
+				out ++= cons.fn.typ.uuid.toString
 				out ++= "\" [label=\"fn\"];\n"
 
 				out ++= "\""
@@ -64,12 +57,10 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 				out ++= cons.uuid.toString
 				out ++= "\" -> \""
 				out ++= prefix
-				out ++= cons.arg.uuid.toString
+				out ++= cons.arg.typ.uuid.toString
 				out ++= "\" [label=\"arg\"];\n"
 
 			case _ =>
 		}
-
-//		for(pl <- typ.places) println(typ, pl)
 	}
 }
