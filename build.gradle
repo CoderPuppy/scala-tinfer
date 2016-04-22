@@ -1,16 +1,19 @@
-apply plugin: 'java'
+apply plugin: "java"
 
 repositories {
 	mavenCentral()
 	mavenLocal()
 }
 
-archivesBaseName = 'typeInference'
-group = 'cpup.typeInference'
-version = 'dev'
+archivesBaseName = "typeInference"
+group = "cpup.typeInference"
+version = "dev"
 
 dependencies.compile "org.scala-lang:scala-library-all:2.11.7"
-apply plugin: 'scala'
+apply plugin: "scala"
 
-apply plugin: 'idea'
-apply plugin: 'maven'
+apply plugin: "application"
+mainClassName = "cpup.typeInference.Main"
+
+apply plugin: "idea"
+apply plugin: "maven"
