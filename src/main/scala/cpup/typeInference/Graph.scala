@@ -24,13 +24,11 @@ class Graph {
 
 	sealed trait Type {
 		val uuid = UUID.randomUUID()
-		_typs += this
-		_typIds.getOrElseUpdate(id, this)
 
 		protected[typeInference] val _places = mutable.Set.empty[Place]
 		def places = _places.toSet
 
-		def merge(other: Type): Type
+		def merge(other: Type): Option[Type]
 		def id: Any
 	}
 	object Type {
@@ -45,7 +43,7 @@ class Graph {
 			val name = unknownNames.head
 			unknownNames = unknownNames.tail
 
-			def merge(other: Type) = other
+			def merge(other: Type) = Some(other)
 			def id = this
 
 			override def toString = s"unknown:$name"
@@ -54,10 +52,10 @@ class Graph {
 		class Identifier(val name: String) extends Type {
 			def id = name
 			def merge(other: Type) = other match {
-				case other: Identifier if other.name == name => this
+				case other: Identifier if other.name == name => Some(this)
 
 				case _ =>
-					throw new RuntimeException(s"cannot merge $this and $other")
+					None
 			}
 
 			override def toString = name
@@ -68,19 +66,40 @@ class Graph {
 			arg._dependents += this
 
 			def id = (fn.typ.id, arg.typ.id)
-			def merge(other: Type) = {
-				other match {
-					case other: Construct =>
-						fn ++ other.fn
-						arg ++ other.arg
+			def merge(other: Type) = other match {
+				case other: Construct =>
+					fn ++ other.fn
+					arg ++ other.arg
+					Some(this)
 
-					case _ =>
-						throw new RuntimeException(s"cannot merge $this and $other")
-				}
-				this
+				case _ =>
+					None
 			}
 
 			override def toString = s"$fn($arg)"
+		}
+
+		class Or(_opts: Set[Type]) extends Type {
+			lazy val optsP: Set[Place] = _opts.flatMap {
+				case o: Type.Or => o.optsT
+				case t => Set(t)
+			}.map(new Place(_))
+
+			for(optP <- optsP) optP._dependents += this
+
+			def optsT = optsP.map(_.typ)
+
+			def merge(other: Type) = other match {
+				case o: Or =>
+					val intersect = optsT.intersect(o.optsT)
+					if(intersect.nonEmpty) Some(new Type.Or(intersect)) else None
+
+				case _ =>
+					optsT.view.flatMap(_.merge(other)).headOption
+			}
+			def id = optsT
+
+			override def toString = "(" + optsP.mkString(" || ") + ")"
 		}
 	}
 
@@ -98,6 +117,8 @@ class Graph {
 
 		_places += this
 		_typ._places += this
+		_typs += typ
+		_typIds(typ.id) = typ
 		def typ = _typ
 
 		dedup
@@ -110,15 +131,19 @@ class Graph {
 			}
 			merging += this
 
+			val deps = dependents ++ other.dependents
+			for(dep <- deps) {
+				_typIds.remove(dep.id)
+			}
+
 			val oldTyp = _typ
 
 			_typIds.remove(oldTyp.id)
 			_typIds.remove(other._typ.id)
 
-			_typ = other._typ match {
-				case _: Type.Unknown => oldTyp
-				case otyp => oldTyp.merge(otyp)
-			}
+			_typ = _typ.merge(other._typ)
+				.orElse(other._typ.merge(_typ))
+				.getOrElse(throw new RuntimeException(s"cannot merge $this and $other"))
 
 			_typ._places ++= other._typ.places
 			_typ._places ++= oldTyp.places
@@ -132,7 +157,8 @@ class Graph {
 				pl._typ = _typ
 
 			dedup
-			for(dep <- _dependents ++ other._dependents; depP <- dep._places.headOption) {
+			for(dep <- deps; depP <- dep._places.headOption) {
+				_typIds(dep.id) = dep
 				depP.dedup
 			}
 
@@ -161,6 +187,7 @@ class Graph {
 		}
 
 		def apply(arg: Place) = new Place(new Type.Construct(this, arg))
+		def ||(other: Place) = new Place(new Type.Or(Set(_typ, other._typ)))
 
 		override def toString = typ.toString
 	}
