@@ -15,7 +15,7 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 		out ++= lbl.uuid.toString
 		out ++= "\" [label=\"label: "
 		out ++= lbl.label.replace("\\", "\\\\").replace("\"", "\\\"")
-		out ++= "\"];\n"
+		out ++= "\",fillcolor=yellow,style=filled];\n"
 
 		out ++= "\""
 		out ++= prefix
@@ -40,8 +40,27 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 
 			case u: g.Type.Unknown =>
 				s"unknown: ${u.name}"
+
+			case o: g.Type.Or =>
+				"or"
 		})
-		out ++= "\"];\n"
+		out ++= "\""
+		typ match {
+			case _: g.Type.Unknown =>
+				out ++= ",fillcolor=grey,fontcolor=red,style=filled"
+
+			case _: g.Type.Identifier =>
+				out ++= ",fillcolor=green,style=filled"
+
+			case _: g.Type.Construct =>
+				out ++= ",fillcolor=red,style=filled,fontcolor=white"
+
+			case _: g.Type.Or =>
+				out ++= ",fillcolor=blue,style=filled,fontcolor=white"
+
+			case _ =>
+		}
+		out ++= "];\n"
 		typ match {
 			case cons: g.Type.Construct =>
 				out ++= "\""
@@ -59,6 +78,17 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 				out ++= prefix
 				out ++= cons.arg.typ.uuid.toString
 				out ++= "\" [label=\"arg\"];\n"
+
+			case or: g.Type.Or =>
+				for(opt <- or.optsT) {
+					out ++= "\""
+					out ++= prefix
+					out ++= or.uuid.toString
+					out ++= "\" -> \""
+					out ++= prefix
+					out ++= opt.uuid.toString
+					out ++= "\" [label=opt];\n"
+				}
 
 			case _ =>
 		}

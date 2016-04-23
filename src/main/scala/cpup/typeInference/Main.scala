@@ -3,6 +3,7 @@ package cpup.typeInference
 object Main {
 	def main(args: Array[String]) {
 		print("digraph {\n")
+		print("nodesep=1;\n")
 
 		val g = new Graph
 
@@ -82,12 +83,18 @@ object Main {
 		// testMnd = test Monad
 		val testMnd = test.label("testMnd test")(mnd).label("testMnd").force(list(monad(list)))
 
-		println("main", main.use.typ)
-		println("test", test.use.typ.label("Main - test"))
-		println("test1", test1.use.typ.label("Main - test1"))
-		println("testMnd", testMnd.use.typ.label("Main - testMnd"))
+		val mainUse = main.use
+		val testUse = test.use
+		testUse.typ.label("Main - test")
+		val test1Use = test1.use
+		test1Use.typ.label("Main - test1")
+		val testMndUse = testMnd.use
+		testMndUse.typ.label("Main - testMnd")
 
-//		printGraph
+		val mndUse = mnd.use
+		mndUse.typ.label("Main - mnd")
+
+		printGraph
 
 		print("}\n")
 	}

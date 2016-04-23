@@ -30,6 +30,13 @@ class Graph {
 
 		def merge(other: Type): Option[Type]
 		def id: Any
+
+		protected var oldId: Any = null
+		def updateId {
+			_typIds.remove(oldId)
+			_typIds(id) = this
+			oldId = id
+		}
 	}
 	object Type {
 		private var unknownNames = Stream.from(1).map { n =>
@@ -118,7 +125,7 @@ class Graph {
 		_places += this
 		_typ._places += this
 		_typs += typ
-		_typIds(typ.id) = typ
+		typ.updateId
 		def typ = _typ
 
 		dedup
@@ -130,11 +137,6 @@ class Graph {
 				return this
 			}
 			merging += this
-
-			val deps = dependents ++ other.dependents
-			for(dep <- deps) {
-				_typIds.remove(dep.id)
-			}
 
 			val oldTyp = _typ
 
@@ -157,8 +159,8 @@ class Graph {
 				pl._typ = _typ
 
 			dedup
-			for(dep <- deps; depP <- dep._places.headOption) {
-				_typIds(dep.id) = dep
+			for(dep <- dependents ++ other.dependents; depP <- dep._places.headOption) {
+				dep.updateId
 				depP.dedup
 			}
 
