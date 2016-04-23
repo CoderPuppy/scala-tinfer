@@ -12,7 +12,7 @@ class Graph {
 	protected val _typs = mutable.Set.empty[Type]
 	def typs: Set[Type] = _typs.toSet
 
-	protected val _typIds = mutable.Map.empty[Any, Type]
+	protected val _typIds = new mutable.WeakHashMap[Any, Type]
 	def typIds = _typIds.toMap
 
 	protected val _labels = mutable.Set.empty[Label]
@@ -33,6 +33,7 @@ class Graph {
 
 		protected var oldId: Any = null
 		def updateId {
+			if(id == oldId) return
 			_typIds.remove(oldId)
 			_typIds(id) = this
 			oldId = id
@@ -40,10 +41,10 @@ class Graph {
 	}
 	object Type {
 		private var unknownNames = Stream.from(1).map { n =>
-			Integer.toString(n, 26).toCharArray.map {
+			Integer.toString(n, 27).map {
 				case c if c >= '0' && c <= '9' => (c + 17).toChar
-				case c if c >= 'a' && c <= 'z' => (c - 32).toChar
-			}.mkString
+				case c if c >= 'a' && c <= 'z' => (c - 22).toChar
+			}
 		}
 
 		class Unknown extends Type {
@@ -124,7 +125,7 @@ class Graph {
 
 		_places += this
 		_typ._places += this
-		_typs += typ
+		_typs += _typ
 		typ.updateId
 		def typ = _typ
 
@@ -158,10 +159,14 @@ class Graph {
 			for(pl <- _typ._places)
 				pl._typ = _typ
 
-			dedup
-			for(dep <- dependents ++ other.dependents; depP <- dep._places.headOption) {
-				dep.updateId
-				depP.dedup
+			val queue = mutable.Queue.empty[Place]
+			queue.enqueue(this)
+			queue.enqueue(oldTyp._places.toSeq: _*)
+			queue.enqueue(other._typ._places.toSeq: _*)
+			for(pl <- queue) {
+				pl.typ.updateId
+				pl.dedup
+				queue.enqueue(pl._dependents.view.flatMap(_.places).toSeq: _*)
 			}
 
 			merging -= this
@@ -286,6 +291,6 @@ class Graph {
 	}
 
 	def scope(create: () => Expr.Use) = Expr.Scope(create)
-	def undefined = Expr.Undefined(unknown)
+	def typed(pl: Place = unknown) = Expr.Undefined(pl)
 	def fn(fn: Expr => Expr) = Expr.Function(fn)
 }

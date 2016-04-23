@@ -25,7 +25,7 @@ object Main {
 		val unit = g.typ("()").label("unit")
 		val int = g.typ("Int").label("int")
 
-		val one = g.undefined.force(int).label("one")
+		val one = g.typed(int).label("one")
 
 		def fun(args: g.Place*)(res: g.Place): g.Place = {
 			args.foldRight(res) { (arg, res) =>
@@ -35,7 +35,7 @@ object Main {
 
 		// Monad :: Monad IO
 		val mnd = g.scope { () =>
-			g.undefined.force(monad(io || list)).label("mnd").use
+			g.typed(monad(io || list)).label("mnd").use
     }
 
 		// bind :: Monad m -> m a -> (a -> m b) -> m b
@@ -44,7 +44,7 @@ object Main {
 			val a = g.unknown.label("bind a")
 			val b = g.unknown.label("bind b")
 
-			g.undefined.force(fun(monad(m), m(a), fun(a)(m(b)))(m(b))).label("bind").use
+			g.typed(fun(monad(m), m(a), fun(a)(m(b)))(m(b))).label("bind").use
 		}
 
 		// seq :: Monad m -> m a -> m b -> m b
@@ -52,12 +52,12 @@ object Main {
 
 		// getLine :: IO String
 		val getLine = g.scope { () =>
-			g.undefined.force(io(str)).label("getLine").use
+			g.typed(io(str)).label("getLine").use
 		}
 
 		// putStrLn :: String -> IO ()
 		val putStrLn = g.scope { () =>
-			g.undefined.force(fun(str)(io(unit))).label("putStrLn").use
+			g.typed(fun(str)(io(unit))).label("putStrLn").use
 		}
 
 		// main = bind getLine putStrLn
@@ -66,11 +66,11 @@ object Main {
 		// repeat :: a -> Int -> [a]
 		val repeat = g.scope { () =>
 			val a = g.unknown.label("repeat a")
-			g.undefined.force(fun(a, int)(list(a))).label("repeat").use
+			g.typed(fun(a, int)(list(a))).label("repeat").use
 		}
 
 		// inf :: [Int]
-		val inf = g.undefined.force(list(int)).label("inf")
+		val inf = g.typed(list(int)).label("inf")
 
 		// test :: a -> [a]
 		val test = g.fn { a => bind(mnd)(inf)(repeat(a)) }.label("test")
@@ -83,16 +83,15 @@ object Main {
 		// testMnd = test Monad
 		val testMnd = test.label("testMnd test")(mnd).label("testMnd").force(list(monad(list)))
 
-		val mainUse = main.use
+//		val mainUse = main.use
 		val testUse = test.use
 		testUse.typ.label("Main - test")
-		val test1Use = test1.use
-		test1Use.typ.label("Main - test1")
-		val testMndUse = testMnd.use
-		testMndUse.typ.label("Main - testMnd")
-
-		val mndUse = mnd.use
-		mndUse.typ.label("Main - mnd")
+//		val test1Use = test1.use
+//		test1Use.typ.label("Main - test1")
+//		val testMndUse = testMnd.use
+//		testMndUse.typ.label("Main - testMnd")
+//		val mndUse = mnd.use
+//		mndUse.typ.label("Main - mnd")
 
 		printGraph
 
