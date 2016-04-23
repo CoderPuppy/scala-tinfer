@@ -15,8 +15,8 @@ class Graph {
 	protected val _typIds = new mutable.WeakHashMap[Any, Type]
 	def typIds = _typIds.toMap
 
-	protected val _labels = mutable.Set.empty[Label]
-	def labels = _labels.toSet
+	protected val _typLabels = mutable.Set.empty[Type.Label]
+	def typLabels = _typLabels.toSet
 
 	def unknown = new Place(new Type.Unknown)
 
@@ -109,10 +109,10 @@ class Graph {
 
 			override def toString = "(" + optsP.mkString(" || ") + ")"
 		}
-	}
 
-	class Label(val label: String, val place: Place) {
-		val uuid = UUID.randomUUID
+		class Label(val label: String, val place: Place) {
+			val uuid = UUID.randomUUID
+		}
 	}
 
 	protected val merging = new WeakHashSet[Place]
@@ -134,7 +134,7 @@ class Graph {
 		def ++(other: Place): Place = {
 			if(other == this) return this
 			if(merging.contains(this)) {
-				println("recursive merging", this, other)
+//				println("recursive merging", this, other)
 				return this
 			}
 			merging += this
@@ -184,11 +184,11 @@ class Graph {
 			}
 		}
 
-		protected val _labels = mutable.Set.empty[Label]
+		protected val _labels = mutable.Set.empty[Type.Label]
 		def labels = _labels.toSet
 		def label(label: String) = {
-			val lbl = new Label(label, this)
-			Graph.this._labels += lbl
+			val lbl = new Type.Label(label, this)
+			Graph.this._typLabels += lbl
 			_labels += lbl
 			this
 		}
@@ -201,30 +201,55 @@ class Graph {
 
 	val fnTyp = typ("Function").label("fn")
 
+	protected val _exprs = new WeakHashSet[Expr]
+	def exprs = _exprs.toSet
+
+	protected val _exprUses = new WeakHashSet[Expr.Use]
+	def exprUses = _exprUses.toSet
+
+	protected val _exprLabels = mutable.Set.empty[Expr.Label]
+	def exprLabels = _exprLabels.toSet
+
 	sealed trait Expr {
-		def use: Expr.Use
+		val uuid = UUID.randomUUID()
+		_exprs += this
+
+		type U <: Expr.Use
+		def uses: Set[U]
+		def use: U
 
 		def apply(arg: Expr) = Expr.Call(this, arg)
 
 		def force(pl: Place) = Expr.Force(this, pl)
 
-		def label(label: String) = Expr.Label(this, label)
+		def label(label: String) = {
+			val lbl = new Expr.Label(label, this)
+			_exprLabels += lbl
+			this
+		}
 	}
 	object Expr {
 		trait Use {
+			val uuid = UUID.randomUUID()
+			_exprUses += this
+
 			def expr: Expr
 			def typ: Place
 		}
 
 		case class Undefined(pl: Place) extends Expr {
+			type U = Use.type
 			object Use extends Expr.Use {
 				def expr = Undefined.this
 				def typ = pl
 			}
+			def uses = Set(Use)
 			def use = Use
 		}
 
 		case class Call(fn: Expr, arg: Expr) extends Expr {
+			type U = Use
+
 			class Use extends Expr.Use {
 				def expr = Call.this
 
@@ -235,48 +260,64 @@ class Graph {
 				fnUse.typ ++ fnTyp(argUse.typ)(typ)
 			}
 
-			def use = new Use
+			protected val _uses = new WeakHashSet[Use]
+			def uses = _uses.toSet
+			def use = {
+				val use = new Use
+				_uses += use
+				use
+			}
 		}
 
 		case class Scope(create: () => Expr.Use) extends Expr {
-			override def use = create()
+			type U = Expr.Use
+			protected val _uses = new WeakHashSet[Expr.Use]
+			def uses = _uses.toSet
+			def use = {
+				val use = create()
+				_uses += use
+				use
+			}
 		}
 
 		case class Function(fn: Expr => Expr) extends Expr {
+			trait Arg extends Expr {
+				def parentUse: Use
+			}
+
+			type U = Use
 			class Use extends Expr.Use {
 				def expr = Function.this
 
-				object Arg extends Expr {
+				object Arg extends Function.this.Arg {
 					def parentUse = Use.this
 
+					type U = Use.type
 					object Use extends Expr.Use {
 						def expr = Arg
 						val typ = unknown
 					}
+					def uses = Set(Use)
 					def use = Use
 				}
 
 				val res = fn(Arg)
+				val resUse = res.use
 
-				val typ = fnTyp(Arg.use.typ)(res.use.typ)
+				val typ = fnTyp(Arg.use.typ)(resUse.typ)
 			}
 
-			def use = new Use
-		}
-
-		case class Label(wrapped: Expr, label: String) extends Expr {
-			class Use extends Expr.Use {
-				def expr = Label.this
-				val wrapped = Label.this.wrapped.use
-
-				wrapped.typ.label(label)
-				def typ = wrapped.typ
+			protected val _uses = new WeakHashSet[Use]
+			def uses = _uses.toSet
+			def use = {
+				val use = new Use
+				_uses += use
+				use
 			}
-
-			override def use = new Use
 		}
 
 		case class Force(wrapped: Expr, pl: Place) extends Expr {
+			type U = Use
 			class Use extends Expr.Use {
 				def expr = Force.this
 				val wrapped = Force.this.wrapped.use
@@ -286,11 +327,68 @@ class Graph {
 				typ ++ pl
 			}
 
-			override def use = new Use
+			protected val _uses = new WeakHashSet[Use]
+			def uses = _uses.toSet
+			def use = {
+				val use = new Use
+				_uses += use
+				use
+			}
+		}
+
+		class Isolate extends Expr {
+			protected var _expr: Option[Expr] = None
+			def expr = _expr
+			protected var _exprUse: Option[Expr.Use] = None
+			def exprUse = _exprUse
+			protected var _pattern: Option[Place] = None
+			def pattern = _pattern
+			protected val _uses = new WeakHashSet[Use]
+
+			type U = Use
+			class Use extends Expr.Use {
+				def expr = Isolate.this
+
+				val typ = unknown
+
+				if(_pattern.isDefined)
+					build()
+
+				def build() {
+					val map = mutable.Map.empty[Type, Place]
+					def build(pat: Place): Place = map.getOrElseUpdate(pat.typ, pat.typ match {
+						case _: Type.Unknown => unknown
+						case _: Type.Identifier => pat
+						case c: Type.Construct => build(c.fn)(build(c.arg))
+						case o: Type.Or => new Place(new Type.Or(o.optsP.map(build(_).typ)))
+					})
+					typ ++ build(_pattern.get)
+				}
+			}
+
+			def build(__expr: Expr) = {
+				_expr = Some(__expr)
+				_exprUse = Some(__expr.use)
+				_pattern = Some(_exprUse.get.typ)
+				for(use <- _uses) use.build()
+				this
+			}
+
+			def uses = _uses.toSet
+			def use = {
+				val use = new Use
+				_uses += use
+				use
+			}
+		}
+
+		class Label(val label: String, val expr: Expr) {
+			val uuid = UUID.randomUUID
 		}
 	}
 
 	def scope(create: () => Expr.Use) = Expr.Scope(create)
 	def typed(pl: Place = unknown) = Expr.Undefined(pl)
 	def fn(fn: Expr => Expr) = Expr.Function(fn)
+	def isolate = new Expr.Isolate
 }

@@ -33,67 +33,28 @@ object Main {
 			}
 		}
 
-		// Monad :: Monad IO
-		val mnd = g.scope { () =>
-			g.typed(monad(io || list)).label("mnd").use
-    }
-
-		// bind :: Monad m -> m a -> (a -> m b) -> m b
-		val bind = g.scope { () =>
-			val m = g.unknown.label("bind m")
-			val a = g.unknown.label("bind a")
-			val b = g.unknown.label("bind b")
-
-			g.typed(fun(monad(m), m(a), fun(a)(m(b)))(m(b))).label("bind").use
+		// cons :: a -> [a] -> [a]
+		val cons = g.scope { () =>
+			val a = g.unknown
+			g.typed(fun(a, list(a))(list(a))).label("cons").use
 		}
 
-		// seq :: Monad m -> m a -> m b -> m b
-		val seq = g.fn { m => g.fn { a => g.fn { b => bind(m)(a)(g.fn { _ => b }) } } }.label("seq")
+		// plus :: Int -> Int -> Int
+		val plus = g.typed(fun(int, int)(int)).label("plus")
 
-		// getLine :: IO String
-		val getLine = g.scope { () =>
-			g.typed(io(str)).label("getLine").use
-		}
+		// inf :: Int -> [Int]
+		// inf i = i : inf (i + 1)
+		val inf = g.isolate
+		inf.build(g.fn { i => cons(i)(inf(plus(i)(one))) })
+		inf.label("inf")
 
-		// putStrLn :: String -> IO ()
-		val putStrLn = g.scope { () =>
-			g.typed(fun(str)(io(unit))).label("putStrLn").use
-		}
+		val infUse = inf.use
+//		print(s"infUse -> ${'"'}step1-${infUse.uuid}${'"'};\n")
 
-		// main = bind getLine putStrLn
-		val main = seq(mnd)(bind(mnd)(getLine)(putStrLn))(getLine).label("main")
+		println(infUse.typ.typ.asInstanceOf[g.Type.Construct].arg.uuid)
+		println(inf.asInstanceOf[g.Expr.Isolate].pattern.get.typ.asInstanceOf[g.Type.Construct].arg.uuid)
 
-		// repeat :: a -> Int -> [a]
-		val repeat = g.scope { () =>
-			val a = g.unknown.label("repeat a")
-			g.typed(fun(a, int)(list(a))).label("repeat").use
-		}
-
-		// inf :: [Int]
-		val inf = g.typed(list(int)).label("inf")
-
-		// test :: a -> [a]
-		val test = g.fn { a => bind(mnd)(inf)(repeat(a)) }.label("test")
-
-		// test1 :: [Int]
-		// test1 = test 1
-		val test1 = test.label("test1 test")(one).label("test1")
-
-		// testMnd :: [Monad List]
-		// testMnd = test Monad
-		val testMnd = test.label("testMnd test")(mnd).label("testMnd").force(list(monad(list)))
-
-//		val mainUse = main.use
-		val testUse = test.use
-		testUse.typ.label("Main - test")
-//		val test1Use = test1.use
-//		test1Use.typ.label("Main - test1")
-//		val testMndUse = testMnd.use
-//		testMndUse.typ.label("Main - testMnd")
-//		val mndUse = mnd.use
-//		mndUse.typ.label("Main - mnd")
-
-		printGraph
+//		printGraph
 
 		print("}\n")
 	}

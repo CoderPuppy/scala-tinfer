@@ -3,13 +3,22 @@ package cpup.typeInference
 class DOTPrinter(val g: Graph, val prefix: String) {
 	val out = new StringBuilder
 
-	for(lbl <- g.labels)
+	for(lbl <- g.typLabels)
 		print(lbl)
 
 	for(typ <- g.typs)
 		print(typ)
 
-	def print(lbl: g.Label): Unit = {
+	for(expr <- g.exprs)
+		print(expr)
+
+	for(use <- g.exprUses)
+		print(use)
+
+	for(lbl <- g.exprLabels)
+		print(lbl)
+
+	def print(lbl: g.Type.Label) {
 		out ++= "\""
 		out ++= prefix
 		out ++= lbl.uuid.toString
@@ -92,5 +101,206 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 
 			case _ =>
 		}
+	}
+
+	def name(expr: g.Expr) = expr match {
+		case _: g.Expr.Undefined => "undefined"
+		case _: g.Expr.Call => "call"
+		case _: g.Expr.Scope => "scope"
+		case _: g.Expr.Function => "function"
+		case _: g.Expr.Function#Arg => "arg"
+		case _: g.Expr.Force => "force"
+		case _: g.Expr.Isolate => "isolate"
+	}
+
+	def print(expr: g.Expr) {
+		out ++= "\""
+		out ++= prefix
+		out ++= expr.uuid.toString
+		out ++= "\" [label=\""
+		out ++= name(expr)
+		out ++= "\""
+		expr match {
+			case _ =>
+		}
+		out ++= "];\n"
+
+		for(use <- expr.uses) {
+			out ++= "\""
+			out ++= prefix
+			out ++= expr.uuid.toString
+			out ++= "\" -> \""
+			out ++= prefix
+			out ++= use.uuid.toString
+			out ++= "\" [label=use];\n"
+		}
+
+		expr match {
+			case u: g.Expr.Undefined =>
+				out ++= "\""
+				out ++= prefix
+				out ++= expr.uuid.toString
+				out ++= "\" -> \""
+				out ++= prefix
+				out ++= u.pl.typ.uuid.toString
+				out ++= "\" [label=typ];\n"
+
+			case f: g.Expr.Force =>
+				out ++= "\""
+				out ++= prefix
+				out ++= expr.uuid.toString
+				out ++= "\" -> \""
+				out ++= prefix
+				out ++= f.pl.typ.uuid.toString
+				out ++= "\" [label=typ];\n"
+
+			case i: g.Expr.Isolate =>
+				for(expr <- i.expr) {
+					out ++= "\""
+					out ++= prefix
+					out ++= i.uuid.toString
+					out ++= "\" -> \""
+					out ++= prefix
+					out ++= expr.uuid.toString
+					out ++= "\" [label=expr];\n"
+				}
+
+				for(exprUse <- i.exprUse) {
+					out ++= "\""
+					out ++= prefix
+					out ++= i.uuid.toString
+					out ++= "\" -> \""
+					out ++= prefix
+					out ++= exprUse.uuid.toString
+					out ++= "\" [label=\"expr use\"];\n"
+				}
+
+				for(pat <- i.pattern) {
+					out ++= "\""
+					out ++= prefix
+					out ++= i.uuid.toString
+					out ++= "\" -> \""
+					out ++= prefix
+					out ++= pat.typ.uuid.toString
+					out ++= "\" [label=pat];\n"
+				}
+
+			case c: g.Expr.Call =>
+				out ++= "\""
+				out ++= prefix
+				out ++= c.uuid.toString
+				out ++= "\" -> \""
+				out ++= prefix
+				out ++= c.fn.uuid.toString
+				out ++= "\" [label=fn];\n"
+
+				out ++= "\""
+				out ++= prefix
+				out ++= c.uuid.toString
+				out ++= "\" -> \""
+				out ++= prefix
+				out ++= c.arg.uuid.toString
+				out ++= "\" [label=arg];\n"
+
+			case _ =>
+		}
+	}
+
+	def print(use: g.Expr.Use) {
+		out ++= "\""
+		out ++= prefix
+		out ++= use.uuid.toString
+		out ++= "\" [label=\""
+		out ++= name(use.expr)
+		out ++= "\""
+		// additional attributes here
+		out ++= "];\n"
+
+		out ++= "\""
+		out ++= prefix
+		out ++= use.uuid.toString
+		out ++= "\" -> \""
+		out ++= prefix
+		out ++= use.expr.uuid.toString
+		out ++= "\" [label=expr];\n"
+
+		out ++= "\""
+		out ++= prefix
+		out ++= use.uuid.toString
+		out ++= "\" -> \""
+		out ++= prefix
+		out ++= use.typ.typ.uuid.toString
+		out ++= "\" [label=typ];\n"
+
+		use match {
+			case u: g.Expr.Function#Use =>
+				out ++= "\""
+				out ++= prefix
+				out ++= use.uuid.toString
+				out ++= "\" -> \""
+				out ++= prefix
+				out ++= u.Arg.uuid.toString
+				out ++= "\" [label=arg];\n"
+
+				out ++= "\""
+				out ++= prefix
+				out ++= use.uuid.toString
+				out ++= "\" -> \""
+				out ++= prefix
+				out ++= u.Arg.use.uuid.toString
+				out ++= "\" [label=\"arg use\"];\n"
+
+				out ++= "\""
+				out ++= prefix
+				out ++= use.uuid.toString
+				out ++= "\" -> \""
+				out ++= prefix
+				out ++= u.res.uuid.toString
+				out ++= "\" [label=res];\n"
+
+				out ++= "\""
+				out ++= prefix
+				out ++= use.uuid.toString
+				out ++= "\" -> \""
+				out ++= prefix
+				out ++= u.resUse.uuid.toString
+				out ++= "\" [label=\"res use\"];\n"
+
+			case u: g.Expr.Call#Use =>
+				out ++= "\""
+				out ++= prefix
+				out ++= use.uuid.toString
+				out ++= "\" -> \""
+				out ++= prefix
+				out ++= u.fnUse.uuid.toString
+				out ++= "\" [label=fn];\n"
+
+				out ++= "\""
+				out ++= prefix
+				out ++= use.uuid.toString
+				out ++= "\" -> \""
+				out ++= prefix
+				out ++= u.argUse.uuid.toString
+				out ++= "\" [label=arg];\n"
+
+			case _ =>
+		}
+	}
+
+	def print(lbl: g.Expr.Label) {
+		out ++= "\""
+		out ++= prefix
+		out ++= lbl.uuid.toString
+		out ++= "\" [label=\"label: "
+		out ++= lbl.label.replace("\\", "\\\\").replace("\"", "\\\"")
+		out ++= "\",fillcolor=yellow,style=filled];\n"
+
+		out ++= "\""
+		out ++= prefix
+		out ++= lbl.uuid.toString
+		out ++= "\" -> \""
+		out ++= prefix
+		out ++= lbl.expr.uuid.toString
+		out ++= "\";\n"
 	}
 }
