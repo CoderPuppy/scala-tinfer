@@ -104,7 +104,7 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 	}
 
 	def name(expr: g.Expr) = expr match {
-		case _: g.Expr.Undefined => "undefined"
+		case _: g.Expr.Assume => "assume"
 		case _: g.Expr.Call => "call"
 		case _: g.Expr.Scope => "scope"
 		case _: g.Expr.Function => "function"
@@ -136,7 +136,7 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 		}
 
 		expr match {
-			case u: g.Expr.Undefined =>
+			case u: g.Expr.Assume =>
 				out ++= "\""
 				out ++= prefix
 				out ++= expr.uuid.toString
@@ -301,6 +301,6 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 		out ++= "\" -> \""
 		out ++= prefix
 		out ++= lbl.expr.uuid.toString
-		out ++= "\";\n"
+		out ++= "\" [weight=200];\n"
 	}
 }

@@ -17,15 +17,15 @@ object Main {
 			step += 1
 		}
 
-		val fn = g.typ("Function").label("fn")
-		val io = g.typ("IO").label("io")
-		val monad = g.typ("Monad").label("monad")
-		val list = g.typ("List").label("list")
-		val str = g.typ("String").label("str")
-		val unit = g.typ("()").label("unit")
-		val int = g.typ("Int").label("int")
+		val fn = g.typ("Function")
+		val io = g.typ("IO")
+		val monad = g.typ("Monad")
+		val list = g.typ("List")
+		val str = g.typ("String")
+		val unit = g.typ("()")
+		val int = g.typ("Int")
 
-		val one = g.typed(int).label("one")
+		val one = g.assume(int).label("one")
 
 		def fun(args: g.Place*)(res: g.Place): g.Place = {
 			args.foldRight(res) { (arg, res) =>
@@ -36,11 +36,11 @@ object Main {
 		// cons :: a -> [a] -> [a]
 		val cons = g.scope { () =>
 			val a = g.unknown
-			g.typed(fun(a, list(a))(list(a))).label("cons").use
-		}
+			g.assume(fun(a, list(a))(list(a))).use
+		}.label("cons")
 
 		// plus :: Int -> Int -> Int
-		val plus = g.typed(fun(int, int)(int)).label("plus")
+		val plus = g.assume(fun(int, int)(int)).label("plus")
 
 		// inf :: Int -> [Int]
 		// inf i = i : inf (i + 1)
@@ -49,12 +49,9 @@ object Main {
 		inf.label("inf")
 
 		val infUse = inf.use
-//		print(s"infUse -> ${'"'}step1-${infUse.uuid}${'"'};\n")
+		print(s"infUse -> ${'"'}step1-${infUse.uuid}${'"'};\n")
 
-		println(infUse.typ.typ.asInstanceOf[g.Type.Construct].arg.uuid)
-		println(inf.asInstanceOf[g.Expr.Isolate].pattern.get.typ.asInstanceOf[g.Type.Construct].arg.uuid)
-
-//		printGraph
+		printGraph
 
 		print("}\n")
 	}

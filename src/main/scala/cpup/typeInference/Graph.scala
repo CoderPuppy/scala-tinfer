@@ -35,8 +35,10 @@ class Graph {
 		def updateId {
 			if(id == oldId) return
 			_typIds.remove(oldId)
-			_typIds(id) = this
+			_typIds.getOrElseUpdate(id, this)
 			oldId = id
+
+			_places.head ++ _typIds(id).places.head
 		}
 	}
 	object Type {
@@ -129,12 +131,10 @@ class Graph {
 		typ.updateId
 		def typ = _typ
 
-		dedup
-
 		def ++(other: Place): Place = {
 			if(other == this) return this
 			if(merging.contains(this)) {
-//				println("recursive merging", this, other)
+				println("recursive merging", this, other)
 				return this
 			}
 			merging += this
@@ -165,7 +165,7 @@ class Graph {
 			queue.enqueue(other._typ._places.toSeq: _*)
 			for(pl <- queue) {
 				pl.typ.updateId
-				pl.dedup
+//				pl.dedup
 				queue.enqueue(pl._dependents.view.flatMap(_.places).toSeq: _*)
 			}
 
@@ -174,15 +174,15 @@ class Graph {
 			this
 		}
 
-		def dedup {
-			for {
-				reged <- _typIds.get(_typ.id)
-				if _typ != reged
-				regedP <- reged._places.headOption
-			} {
-				regedP ++ this
-			}
-		}
+//		def dedup {
+//			for {
+//				reged <- _typIds.get(_typ.id)
+//				if _typ != reged
+//				regedP <- reged._places.headOption
+//			} {
+//				regedP ++ this
+//			}
+//		}
 
 		protected val _labels = mutable.Set.empty[Type.Label]
 		def labels = _labels.toSet
@@ -237,10 +237,10 @@ class Graph {
 			def typ: Place
 		}
 
-		case class Undefined(pl: Place) extends Expr {
+		case class Assume(pl: Place) extends Expr {
 			type U = Use.type
 			object Use extends Expr.Use {
-				def expr = Undefined.this
+				def expr = Assume.this
 				def typ = pl
 			}
 			def uses = Set(Use)
@@ -388,7 +388,7 @@ class Graph {
 	}
 
 	def scope(create: () => Expr.Use) = Expr.Scope(create)
-	def typed(pl: Place = unknown) = Expr.Undefined(pl)
+	def assume(pl: Place = unknown) = Expr.Assume(pl)
 	def fn(fn: Expr => Expr) = Expr.Function(fn)
 	def isolate = new Expr.Isolate
 }
