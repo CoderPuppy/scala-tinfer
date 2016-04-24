@@ -1,4 +1,4 @@
-package cpup.typeInference
+package cpup.tinfer
 
 object Main {
 	def main(args: Array[String]) {

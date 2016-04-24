@@ -5,15 +5,15 @@ repositories {
 	mavenLocal()
 }
 
-archivesBaseName = "typeInference"
-group = "cpup.typeInference"
+archivesBaseName = "tinfer"
+group = "cpup.tinfer"
 version = "dev"
 
 dependencies.compile "org.scala-lang:scala-library-all:2.11.7"
 apply plugin: "scala"
 
 apply plugin: "application"
-mainClassName = "cpup.typeInference.Main"
+mainClassName = "cpup.tinfer.Main"
 
 apply plugin: "idea"
 apply plugin: "maven"

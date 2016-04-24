@@ -1,4 +1,4 @@
-package cpup.typeInference
+package cpup.tinfer
 
 class DOTPrinter(val g: Graph, val prefix: String) {
 	val out = new StringBuilder

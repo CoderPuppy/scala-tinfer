@@ -1,4 +1,4 @@
-package cpup.typeInference
+package cpup.tinfer
 
 import java.util.UUID
 
@@ -25,7 +25,7 @@ class Graph {
 	sealed trait Type {
 		val uuid = UUID.randomUUID()
 
-		protected[typeInference] val _places = mutable.Set.empty[Place]
+		protected[tinfer] val _places = mutable.Set.empty[Place]
 		def places = _places.toSet
 
 		def merge(other: Type): Option[Type]
@@ -119,10 +119,10 @@ class Graph {
 
 	protected val merging = new WeakHashSet[Place]
 
-	class Place(protected[typeInference] var _typ: Type) {
+	class Place(protected[tinfer] var _typ: Type) {
 		val uuid = UUID.randomUUID
 
-		protected[typeInference] val _dependents = new WeakHashSet[Type]
+		protected[tinfer] val _dependents = new WeakHashSet[Type]
 		def dependents = _dependents.toSet
 
 		_places += this
