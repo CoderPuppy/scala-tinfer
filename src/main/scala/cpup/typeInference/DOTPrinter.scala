@@ -104,13 +104,35 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 	}
 
 	def name(expr: g.Expr) = expr match {
-		case _: g.Expr.Assume => "assume"
+		case _: g.Expr.Unimplemented => "assume"
 		case _: g.Expr.Call => "call"
 		case _: g.Expr.Scope => "scope"
 		case _: g.Expr.Function => "function"
 		case _: g.Expr.Function#Arg => "arg"
 		case _: g.Expr.Force => "force"
 		case _: g.Expr.Isolate => "isolate"
+	}
+
+	def props(expr: g.Expr) = expr match {
+		case _: g.Expr.Unimplemented =>
+			",fillcolor=grey,fontcolor=red,style=filled"
+
+		case _: g.Expr.Force =>
+			",fillcolor=green,style=filled"
+
+		case _: g.Expr.Call =>
+			",fillcolor=red,style=filled,fontcolor=white"
+
+		case _: g.Expr.Isolate =>
+			",fillcolor=blue,style=filled,fontcolor=white"
+
+		case _: g.Expr.Function =>
+			",fillcolor=orange,style=filled,fontcolor=white"
+
+		case _: g.Expr.Function#Arg =>
+			",fillcolor=brown,style=filled,fontcolor=white"
+
+		case _ => ""
 	}
 
 	def print(expr: g.Expr) {
@@ -120,9 +142,7 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 		out ++= "\" [label=\""
 		out ++= name(expr)
 		out ++= "\""
-		expr match {
-			case _ =>
-		}
+		out ++= props(expr)
 		out ++= "];\n"
 
 		for(use <- expr.uses) {
@@ -136,7 +156,7 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 		}
 
 		expr match {
-			case u: g.Expr.Assume =>
+			case u: g.Expr.Unimplemented =>
 				out ++= "\""
 				out ++= prefix
 				out ++= expr.uuid.toString
@@ -153,6 +173,14 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 				out ++= prefix
 				out ++= f.pl.typ.uuid.toString
 				out ++= "\" [label=typ];\n"
+
+				out ++= "\""
+				out ++= prefix
+				out ++= expr.uuid.toString
+				out ++= "\" -> \""
+				out ++= prefix
+				out ++= f.wrapped.uuid.toString
+				out ++= "\" [label=wrapped];\n"
 
 			case i: g.Expr.Isolate =>
 				for(expr <- i.expr) {
@@ -213,7 +241,7 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 		out ++= "\" [label=\""
 		out ++= name(use.expr)
 		out ++= "\""
-		// additional attributes here
+		out ++= props(use.expr)
 		out ++= "];\n"
 
 		out ++= "\""
@@ -282,6 +310,15 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 				out ++= prefix
 				out ++= u.argUse.uuid.toString
 				out ++= "\" [label=arg];\n"
+
+			case u: g.Expr.Force#Use =>
+				out ++= "\""
+				out ++= prefix
+				out ++= u.uuid.toString
+				out ++= "\" -> \""
+				out ++= prefix
+				out ++= u.wrapped.uuid.toString
+				out ++= "\" [label=wrapped];"
 
 			case _ =>
 		}

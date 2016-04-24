@@ -25,7 +25,7 @@ object Main {
 		val unit = g.typ("()")
 		val int = g.typ("Int")
 
-		val one = g.assume(int).label("one")
+		val one = g.uimpl.force(int).label("one")
 
 		def fun(args: g.Place*)(res: g.Place): g.Place = {
 			args.foldRight(res) { (arg, res) =>
@@ -33,14 +33,61 @@ object Main {
 			}
 		}
 
+		// Monad :: Monad IO
+		// Monad :: Monad List
+		val mnd = g.isolate.build(
+			g.uimpl.force(monad(io || list))
+		).label("mnd")
+
+		// bind :: Monad m -> m a -> (a -> m b) -> m b
+		val bind = g.isolate.build({
+			val m = g.unknown.label("m")
+			val a = g.unknown.label("a")
+			val b = g.unknown.label("b")
+			g.uimpl.force(fun(monad(m), m(a), fun(a)(m(b)))(m(b)))
+		}).label("bind")
+
+		// seq :: Monad m -> m a -> m b -> m b
+		// seq m a b = bind m a (\_ -> b)
+		val seq = g.isolate.build(
+			g.fn { m => g.fn { a => g.fn { b =>
+				bind(m)(a)(g.fn { _ => b })
+			} } }
+		).label("seq")
+
+		// getLine :: IO String
+		val getLine = g.isolate.build(
+			g.uimpl.force(io(str))
+		).label("getLine")
+
+		// putStrLn :: String -> IO ()
+		val putStrLn = g.isolate.build(
+			g.uimpl.force(fun(str)(io(unit)))
+		).label("putStrLn")
+
+		// main = seq Monad (bind Monad getLine putStrLn) getLine
+		val main = g.isolate.build(
+			seq(mnd)(bind(mnd)(getLine)(putStrLn))(getLine)
+		).label("main")
+
+		// repeat :: a -> Int -> [a]
+		// repeat _ 0 = []
+		// repeat a n = a : repeat a (n - 1)
+		val repeat = g.isolate.build({
+			val a = g.unknown.label("a")
+			g.uimpl.force(fun(a, int)(list(a)))
+		}).label("repeat")
+
 		// cons :: a -> [a] -> [a]
-		val cons = g.scope { () =>
-			val a = g.unknown
-			g.assume(fun(a, list(a))(list(a))).use
-		}.label("cons")
+		val cons = g.isolate.build({
+			val a = g.unknown.label("a")
+			g.uimpl.force(fun(a, list(a))(list(a)))
+		}).label("cons")
 
 		// plus :: Int -> Int -> Int
-		val plus = g.assume(fun(int, int)(int)).label("plus")
+		val plus = g.isolate.build(
+			g.uimpl.force(fun(int, int)(int))
+		).label("plus")
 
 		// inf :: Int -> [Int]
 		// inf i = i : inf (i + 1)
@@ -49,7 +96,6 @@ object Main {
 		inf.label("inf")
 
 		val infUse = inf.use
-		print(s"infUse -> ${'"'}step1-${infUse.uuid}${'"'};\n")
 
 		printGraph
 
