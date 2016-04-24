@@ -87,7 +87,7 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 	}
 
 	def name(expr: g.Expr) = expr match {
-		case _: g.Expr.Unimplemented => "assume"
+		case _: g.Expr.Unimplemented => "unimplemented"
 		case _: g.Expr.Call => "call"
 		case _: g.Expr.Scope => "scope"
 		case _: g.Expr.Function => "function"
