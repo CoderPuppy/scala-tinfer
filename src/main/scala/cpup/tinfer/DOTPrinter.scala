@@ -49,9 +49,6 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 
 			case u: g.Type.Unknown =>
 				s"unknown: ${u.name}"
-
-			case o: g.Type.Or =>
-				"or"
 		})
 		out ++= "\""
 		typ match {
@@ -63,9 +60,6 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 
 			case _: g.Type.Construct =>
 				out ++= ",fillcolor=red,style=filled,fontcolor=white"
-
-			case _: g.Type.Or =>
-				out ++= ",fillcolor=blue,style=filled,fontcolor=white"
 
 			case _ =>
 		}
@@ -87,17 +81,6 @@ class DOTPrinter(val g: Graph, val prefix: String) {
 				out ++= prefix
 				out ++= cons.arg.typ.uuid.toString
 				out ++= "\" [label=\"arg\"];\n"
-
-			case or: g.Type.Or =>
-				for(opt <- or.optsT) {
-					out ++= "\""
-					out ++= prefix
-					out ++= or.uuid.toString
-					out ++= "\" -> \""
-					out ++= prefix
-					out ++= opt.uuid.toString
-					out ++= "\" [label=opt];\n"
-				}
 
 			case _ =>
 		}

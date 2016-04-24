@@ -89,29 +89,6 @@ class Graph {
 			override def toString = s"$fn($arg)"
 		}
 
-		class Or(_opts: Set[Type]) extends Type {
-			lazy val optsP: Set[Place] = _opts.flatMap {
-				case o: Type.Or => o.optsT
-				case t => Set(t)
-			}.map(new Place(_))
-
-			for(optP <- optsP) optP._dependents += this
-
-			def optsT = optsP.map(_.typ)
-
-			def merge(other: Type) = other match {
-				case o: Or =>
-					val intersect = optsT.intersect(o.optsT)
-					if(intersect.nonEmpty) Some(new Type.Or(intersect)) else None
-
-				case _ =>
-					optsT.view.flatMap(_.merge(other)).headOption
-			}
-			def id = optsT
-
-			override def toString = "(" + optsP.mkString(" || ") + ")"
-		}
-
 		class Label(val label: String, val place: Place) {
 			val uuid = UUID.randomUUID
 		}
@@ -194,7 +171,6 @@ class Graph {
 		}
 
 		def apply(arg: Place) = new Place(new Type.Construct(this, arg))
-		def ||(other: Place) = new Place(new Type.Or(Set(_typ, other._typ)))
 
 		override def toString = typ.toString
 	}
@@ -360,7 +336,6 @@ class Graph {
 						case _: Type.Unknown => unknown
 						case _: Type.Identifier => pat
 						case c: Type.Construct => build(c.fn)(build(c.arg))
-						case o: Type.Or => new Place(new Type.Or(o.optsP.map(build(_).typ)))
 					})
 					typ ++ build(_pattern.get)
 				}
@@ -380,6 +355,8 @@ class Graph {
 				_uses += use
 				use
 			}
+
+			override def toString = s"Isolate(${_expr.map(_.toString).getOrElse("")})"
 		}
 
 		class Label(val label: String, val expr: Expr) {

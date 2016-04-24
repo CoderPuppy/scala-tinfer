@@ -26,6 +26,7 @@ object Main {
 		val int = g.typ("Int")
 
 		val one = g.uimpl.force(int).label("one")
+		val zero = g.uimpl.force(int).label("zero")
 
 		def fun(args: g.Place*)(res: g.Place): g.Place = {
 			args.foldRight(res) { (arg, res) =>
@@ -33,11 +34,15 @@ object Main {
 			}
 		}
 
-		// Monad :: Monad IO
-		// Monad :: Monad List
-		val mnd = g.isolate.build(
-			g.uimpl.force(monad(io || list))
-		).label("mnd")
+		// Monad-IO :: Monad IO
+		val mndIO = g.isolate.build(
+			g.uimpl.force(monad(io))
+		).label("mndIO")
+
+		// Monad-List :: Monad List
+		val mndList = g.isolate.build(
+			g.uimpl.force(monad(list))
+		).label("mndList")
 
 		// bind :: Monad m -> m a -> (a -> m b) -> m b
 		val bind = g.isolate.build({
@@ -67,7 +72,7 @@ object Main {
 
 		// main = seq Monad (bind Monad getLine putStrLn) getLine
 		val main = g.isolate.build(
-			seq(mnd)(bind(mnd)(getLine)(putStrLn))(getLine)
+			seq(mndIO)(bind(mndIO)(getLine)(putStrLn))(getLine)
 		).label("main")
 
 		// repeat :: a -> Int -> [a]
@@ -95,7 +100,13 @@ object Main {
 		inf.build(g.fn { i => cons(i)(inf(plus(i)(one))) })
 		inf.label("inf")
 
-		val infUse = inf.use
+		// test :: a -> [a]
+		// test a = bind Monad inf (repeat a)
+		val test = g.isolate.build(
+			g.fn { a =>
+				bind(mndList)(inf(zero))(repeat(a))
+			}
+		).label("test")
 
 		printGraph
 
