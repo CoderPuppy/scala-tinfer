@@ -34,15 +34,12 @@ object Main {
 			}
 		}
 
-		// Monad-IO :: Monad IO
-		val mndIO = g.isolate.build(
-			g.uimpl.force(monad(io))
-		).label("mndIO")
-
-		// Monad-List :: Monad List
-		val mndList = g.isolate.build(
-			g.uimpl.force(monad(list))
-		).label("mndList")
+		// Monad :: Monad IO
+		// Monad :: Monad List
+		val mnd = g.isolate.build(
+//			g.uimpl.force(monad(io) || monad(list))
+			g.uimpl.force(g.unknown)
+		).label("mnd")
 
 		// bind :: Monad m -> m a -> (a -> m b) -> m b
 		val bind = g.isolate.build({
@@ -72,7 +69,7 @@ object Main {
 
 		// main = seq Monad (bind Monad getLine putStrLn) getLine
 		val main = g.isolate.build(
-			seq(mndIO)(bind(mndIO)(getLine)(putStrLn))(getLine)
+			seq(mnd)(bind(mnd)(getLine)(putStrLn))(getLine)
 		).label("main")
 
 		// repeat :: a -> Int -> [a]
@@ -104,7 +101,7 @@ object Main {
 		// test a = bind Monad inf (repeat a)
 		val test = g.isolate.build(
 			g.fn { a =>
-				bind(mndList)(inf(zero))(repeat(a))
+				bind(mnd)(inf(zero))(repeat(a))
 			}
 		).label("test")
 

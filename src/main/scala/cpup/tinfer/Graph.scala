@@ -94,6 +94,16 @@ class Graph {
 		}
 	}
 
+	def scope(pat: Place): Place = {
+		val map = mutable.Map.empty[Type, Place]
+		def build(pat: Place): Place = map.getOrElseUpdate(pat.typ, pat.typ match {
+			case _: Type.Unknown => unknown
+			case _: Type.Identifier => pat
+			case c: Type.Construct => build(c.fn)(build(c.arg))
+		})
+		build(pat)
+	}
+
 	protected val merging = new WeakHashSet[Place]
 
 	class Place(protected[tinfer] var _typ: Type) {
@@ -331,13 +341,7 @@ class Graph {
 					build()
 
 				def build() {
-					val map = mutable.Map.empty[Type, Place]
-					def build(pat: Place): Place = map.getOrElseUpdate(pat.typ, pat.typ match {
-						case _: Type.Unknown => unknown
-						case _: Type.Identifier => pat
-						case c: Type.Construct => build(c.fn)(build(c.arg))
-					})
-					typ ++ build(_pattern.get)
+					typ ++ scope(_pattern.get)
 				}
 			}
 
